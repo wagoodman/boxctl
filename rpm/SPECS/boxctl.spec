@@ -37,8 +37,9 @@ mkdir -p $RPM_BUILD_ROOT/%{_bin_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_store_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_image_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_instances_dir}
+mkdir -p $RPM_BUILD_ROOT/%{_etc_systemd_dir}
 cp -r %{_basedir}/bin/*   $RPM_BUILD_ROOT/%{_bin_dir}
-cp -r %{_basedir}/etc/*   $RPM_BUILD_ROOT/%{_etc_dir}
+cp -r %{_basedir}/%{_etc_systemd_dir}/*   $RPM_BUILD_ROOT/%{_etc_systemd_dir}
 
 %clean
 
