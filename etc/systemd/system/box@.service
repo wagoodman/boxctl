@@ -1,0 +1,19 @@
+[Unit]
+Description=nspawn OS Container managed by boxctl
+PartOf=machines.target
+Before=machines.target
+
+[Service]
+ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --boot --link-journal=try-guest --machine %I -D /var/lib/machines/%I/ \
+--capability=CAP_NET_RAW --capability=CAP_NET_BROADCAST  --capability=CAP_NET_ADMIN \
+-n
+
+KillMode=mixed
+Type=notify
+RestartForceExitStatus=133
+SuccessExitStatus=133
+Slice=machine.slice
+Delegate=yes
+
+[Install]
+WantedBy=machines.target
