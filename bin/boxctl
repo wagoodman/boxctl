@@ -21,16 +21,11 @@ GREEN=$(tput setaf 2)$(tput bold)
 # /etc/profile env scripts. This should be done manually.
 NSPAWN_IMAGES_DIR=/var/lib/machines
 
-BOXCTL_BIN_PATH=$(dirname $(readlink -f $0))
-BOXCTL_STORE=$(realpath $BOXCTL_BIN_PATH/../store)
-MACHINE_IMAGES_DIR=$(realpath $BOXCTL_BIN_PATH/../machines)
-BOXCTL_HOSTNAME_OVERRIDE_FILE=$BOXCTL_STORE/hostname-override
-
-
-# TODO check to see if this file exists before using it, then check if there are contents
-#BOXCTL_BOX_HOSTNAME=$(cat $BOXCTL_HOSTNAME_OVERRIDE_FILE)
-
-BOXCTL_BOX_HOSTNAME=$(hostname)
+#BOXCTL_BIN_PATH=$(dirname $(readlink -f $0))
+#BOXCTL_STORE=$(realpath $BOXCTL_BIN_PATH/../store)
+BOXCTL_BIN_PATH=/opt/boxctl/bin
+BOXCTL_STORE=/opt/boxctl/store
+#MACHINE_IMAGES_DIR=$(realpath $BOXCTL_BIN_PATH/../machines)
 
 # The script will facilitate errors now...
 set +e
@@ -43,37 +38,34 @@ usage () {
 cat << EndOfHelp
 ${BOLD}boxctl - wrapper for systemd-nspawn OS container control.${NORMAL}
 
-   boxctl [command] [options]
-
-${BOLD}Options:${NORMAL}
- -M <hostname>   Change the guest to control. (default matches the hostname of the current system)
-                 Note: this option overrides the value in store/hostname-override
+    boxctl <command> <instance-name> [<image-name>]
 
 ${BOLD}Application commands:${NORMAL}
-   app-status [-M ...]  Show the current status of the applications.
+    app-status <name>  Show the current status of the applications.
 
 ${BOLD}Container commands:${NORMAL}
-   start [-M ...]       Power on the OS container.
-   poweroff [-M ...]    Shutdown the OS container.
-   restart [-M ...]     Power off then power on the OS container.
-   terminate [-M ...]   Forcefully kill the OS container (not recommended).
-   enable [-M ...]      Ensure the OS container starts upon reboot of the host.
-   disable [-M ...]     Ensure the OS container does *not* start upon reboot of the host.
-   status [-M ...]      Determine the operational condition of the OS container.
-   list [-M ...]        Show all running OS containers.
-   login [-M ...]       Enter a TTY session to the OS container.
+    configure <name>   Enter the container without booting it (for making filesystem changes).
+    disable <name>     Ensure the OS container does *not* start upon reboot of the host.
+    enable <name>      Ensure the OS container starts upon reboot of the host.
+    list <name>        Show all running OS containers.
+    login <name>       Enter a TTY session to the OS container.
+    poweroff <name>    Shutdown the OS container.
+    restart <name>     Power off then power on the OS container.
+    start <name>       Power on the OS container.
+    status <name>      Determine the operational condition of the OS container.
+    terminate <name>   Forcefully kill the OS container (not recommended).
 
 ${BOLD}Conatiner image/instance commands:${NORMAL}
-   list-images               Show avaliable images, current instance, and fallback instance.
-   stage-image <tar-path>    Install a new image from the given tar.gz archive.
-   cutover-instance <image-name> [-M ...]   Actively cutover to a new instance of the OS.
-   fallback-instance [-M ...]               Fallback to a previously used instance.
-   delete-instance <image-name> [-M ...]    Delete the instance based off of the given image name.
-   reset <image-name> [-M ...]       Reset the current instance to the originally installed image.
+    cutover-instance <name> <image-name>   Actively cutover to a new instance of the OS.
+    delete-instance <name> <image-name>    Delete the instance based off of the given image name.
+    fallback-instance <name>               Fallback to a previously used instance.
+    list-images                     Show avaliable images, current instance, and fallback instance.
+    reset <name> <image-name>       Reset the current instance to the originally installed image.
+    stage-image <tar-path>          Install a new image from the given tar.gz archive.
 
 ${BOLD}Future commands:${NORMAL}
-   backup [-M ...]      Make a backup of the current image.
-   start-x [-M ...]     Start an ephemeral OS container, which will restore to day-1 upon shutdown
+    backup <name>      Make a backup of the current image.
+    start-x <name>     Start an ephemeral OS container, which will restore to day-1 upon shutdown
 
 EndOfHelp
 }
@@ -140,33 +132,16 @@ switchToImage () {
     echo "${BOLD}Complete!${NORMAL}"
 }
 
-# Only process arguments after the subcommand, getopts will handle the rest.
-# Note: it is not safe to reference $1 after this point, use $subcommand instead.
-subcommand=$1;
-OPTIND=2
-
-# accept a -M with an argument (M:)
-# Note: we are not supressing errors from getopts to ensure that -M is always
-# accompanied by a positional argument.
-while getopts "M:" opt; do
-    case $opt in
-        M)
-            echo "${YELLOW}Overriding hostname to '$OPTARG'${NORMAL}"
-            BOXCTL_BOX_HOSTNAME=$OPTARG
-
-            # These two arguments (-M and the value) should not be populated
-            # in $2 or $3.
-            shift 2;
-        ;;
-        \?)
-            echo "${RED}Invalid option specified${NORMAL}" >&2
-            exit 1;
-        ;;
-    esac
-done
+function checkForInstanceName() {
+    if [[ -z "$BOXCTL_BOX_HOSTNAME" ]]; then
+        echo "${RED}Please specify a container instance name.${NORMAL}"
+        exit 1
+    fi
+}
 
 # Fetch and otherwise manage all values in the store for this session
-
+subcommand=$1
+BOXCTL_BOX_HOSTNAME=$2
 BOXCTL_SERVICES_FILE=$BOXCTL_STORE/services
 BOXCTL_CURRENT_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/current-instance
 BOXCTL_FALLBACK_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/fallback-instance
@@ -178,13 +153,13 @@ if [ ! -d "$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/" ]; then
     touch "$BOXCTL_FALLBACK_FILE"
 fi
 
-BOXCTL_CURRENT_BOX=$(cat $BOXCTL_CURRENT_FILE)
-BOXCTL_FALLBACK_BOX=$(cat $BOXCTL_FALLBACK_FILE)
+[ -f $BOXCTL_CURRENT_FILE ] && BOXCTL_CURRENT_BOX=$(cat $BOXCTL_CURRENT_FILE)
+[ -f $BOXCTL_FALLBACK_FILE ] && BOXCTL_FALLBACK_BOX=$(cat $BOXCTL_FALLBACK_FILE)
 
 # Process the subcommand
 case "$subcommand" in
 app-status)
-
+    checkForInstanceName
     if [[ "$(/usr/bin/systemctl is-active box@$BOXCTL_BOX_HOSTNAME)" == "active" ]]; then
         SYSCTL="/usr/bin/systemctl -M $BOXCTL_BOX_HOSTNAME "
 
@@ -200,44 +175,59 @@ app-status)
     fi
 
 ;;
+configure)
+    checkForInstanceName
+    /usr/bin/systemd-nspawn --machine $BOXCTL_BOX_HOSTNAME -D /var/lib/machines/$BOXCTL_BOX_HOSTNAME/
+    exit $?
+;;
 start)
+    checkForInstanceName
+    /usr/bin/tar-overlay mount $BOXCTL_CURRENT_BOX
     /usr/bin/systemctl start box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 stop)
+    checkForInstanceName
     echo "${RED}Invalid option: $subcommand ${NORMAL}" >&2
     echo "${BOLD}Did you mean 'poweroff'?${NORMAL}" >&2
     exit 1
 ;;
 poweroff)
+    checkForInstanceName
     /usr/bin/machinectl poweroff $BOXCTL_BOX_HOSTNAME
     #/usr/bin/systemctl stop box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 reboot)
+    checkForInstanceName
     #/usr/bin/machinectl reboot $BOXCTL_BOX_HOSTNAME
     /usr/bin/systemctl stop box@$BOXCTL_BOX_HOSTNAME
     /usr/bin/systemctl start box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 login)
+    checkForInstanceName
     /usr/bin/machinectl login $BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 terminate)
+    checkForInstanceName
     /usr/bin/machinectl terminate $BOXCTL_BOX_HOSTNAME
     #/usr/bin/systemctl kill box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 enable)
+    checkForInstanceName
     /usr/bin/systemctl enable box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 disable)
+    checkForInstanceName
     /usr/bin/systemctl disable box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
 status)
+    checkForInstanceName
     if [[ "$(/usr/bin/systemctl is-active box@$BOXCTL_BOX_HOSTNAME)" == "active" ]]; then
         /usr/bin/machinectl status $BOXCTL_BOX_HOSTNAME
         #/usr/bin/systemctl status box@$BOXCTL_BOX_HOSTNAME
@@ -280,27 +270,28 @@ list-images)
     exit $?
 ;;
 stage-image)
-    if [[ -z "$2" ]]; then
+    if [[ -z "$3" ]]; then
         echo "${RED}Please specify a path to the container tar.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
         echo "   $0 stage-image <path-to-tar>"
         exit 1
     fi
-    IMG_TAR_PATH="$2"
+    IMG_TAR_PATH="$3"
 
     tar-overlay install-image "$IMG_TAR_PATH"
     exit $?
 
 ;;
 cutover-instance)
-    if [[ -z "$2" ]]; then
+    checkForInstanceName
+    if [[ -z "$3" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
         echo "   $0 cutover-instance <image-name>"
         exit 1
     fi
 
-    IMG_NAME="$2"
+    IMG_NAME="$3"
     TAROVERLAY_NAME="${IMG_NAME}@${BOXCTL_BOX_HOSTNAME}"
 
     #echo "$TAROVERLAY_NAME" "$IMG_NAME"
@@ -311,6 +302,7 @@ cutover-instance)
     echo $TAROVERLAY_NAME > $BOXCTL_CURRENT_FILE
 ;;
 fallback-instance)
+    checkForInstanceName
     if [[ -z "$BOXCTL_FALLBACK_BOX" ]]; then
         echo "${RED}${BOLD}There is no fallback image.${NORMAL}"
         exit 1
@@ -323,10 +315,11 @@ fallback-instance)
 
 ;;
 delete-instance)
-    if [[ -z "$2" ]]; then
+    checkForInstanceName
+    if [[ -z "$3" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
-        echo "   $0 delete-instance <instance-name>"
+        echo "   $0 delete-instance <name> <image-name>"
         exit 1
     fi
 
@@ -335,20 +328,22 @@ delete-instance)
         exit 1
     fi
 
-    IMG_NAME="$2"
+    IMG_NAME="$3"
     TAROVERLAY_NAME="${IMG_NAME}@${BOXCTL_BOX_HOSTNAME}"
 
     echo "Removing instance '$TAROVERLAY_NAME'..."
 
     tar-overlay umount "$TAROVERLAY_NAME"
     tar-overlay delete "$TAROVERLAY_NAME"
+    unlink "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME"
 
     #/usr/bin/machinectl remove "$IMG_NAME"
 
     echo "${BOLD}Complete!${NORMAL}"
 ;;
 reset-instance)
-    if [[ -z "$2" ]]; then
+    checkForInstanceName
+    if [[ -z "$3" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
         echo "   $0 reset-instance <instance-name>"
@@ -360,7 +355,7 @@ reset-instance)
         exit 1
     fi
 
-    IMG_NAME="$2"
+    IMG_NAME="$3"
     TAROVERLAY_NAME="${IMG_NAME}@${BOXCTL_BOX_HOSTNAME}"
 
     tar-overlay umount "$TAROVERLAY_NAME"

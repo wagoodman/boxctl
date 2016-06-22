@@ -4,6 +4,7 @@ PartOf=machines.target
 Before=machines.target
 
 [Service]
+#ExecStartPre=/usr/bin/tar-overlay mount-all
 ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --boot --link-journal=try-guest --machine %I -D /var/lib/machines/%I/ \
 --capability=CAP_NET_RAW --capability=CAP_NET_BROADCAST  --capability=CAP_NET_ADMIN \
 -n
