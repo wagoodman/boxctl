@@ -85,7 +85,7 @@ switchToImage () {
 
     IMG_PATH=$(tar-overlay get-mount-path $IMG_NAME)
 
-    if [[ "$IMG_NAME" == "$BOXCTL_CURRENT_BOX" ]]; then
+    if [[ "$IMG_NAME" == "$BOXCTL_CURRENT_OVERLAY" ]]; then
         echo "${RED}Image given is already in use.${NORMAL}"
         exit 1
     fi
@@ -93,7 +93,7 @@ switchToImage () {
     echo "${BOLD}Switching to container image '$IMG_NAME'${NORMAL}"
 
     set -e # exit on error
-    trap "echo \"${RED}Cutover was unsuccessful.${NORMAL}\"; switchToImage $FALLBACK_IMG_NAME ; truncate -s0 $BOXCTL_FALLBACK_FILE ; echo $BOXCTL_FALLBACK_BOX > $BOXCTL_CURRENT_FILE ; exit 1" EXIT
+    trap "echo \"${RED}Cutover was unsuccessful.${NORMAL}\"; switchToImage $FALLBACK_IMG_NAME ; truncate -s0 $BOXCTL_FALLBACK_OVERLAY_FILE ; echo $BOXCTL_FALLBACK_OVERLAY > $BOXCTL_CURRENT_OVERLAY_FILE ; exit 1" EXIT
 
     if [[ "$(/usr/bin/systemctl is-active box@$BOXCTL_BOX_HOSTNAME)" == "active" ]]
     then
@@ -103,9 +103,9 @@ switchToImage () {
        echo "   Box '$BOXCTL_BOX_HOSTNAME' is already powered off"
     fi
 
-    if [[ ! -z "$BOXCTL_CURRENT_BOX" ]]; then
-        echo "   Unmounting existing Box FS"
-        tar-overlay umount "$BOXCTL_CURRENT_BOX"
+    if [[ ! -z "$BOXCTL_CURRENT_OVERLAY" ]]; then
+        echo "   Unmounting existing Box filesystem"
+        tar-overlay umount "$BOXCTL_CURRENT_OVERLAY"
     fi
 
     echo "   Cutting over to new Box"
@@ -120,7 +120,7 @@ switchToImage () {
     #echo "TEST" "$IMG_PATH" "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME" "END TEST"
     ln -s "$IMG_PATH" "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME"
 
-    echo "   Mounting new Box FS"
+    echo "   Mounting new Box filesystem"
     tar-overlay mount "$IMG_NAME"
 
     echo "   Powering on Box '$BOXCTL_BOX_HOSTNAME'"
@@ -143,18 +143,18 @@ function checkForInstanceName() {
 subcommand=$1
 BOXCTL_BOX_HOSTNAME=$2
 BOXCTL_SERVICES_FILE=$BOXCTL_STORE/services
-BOXCTL_CURRENT_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/current-instance
-BOXCTL_FALLBACK_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/fallback-instance
+BOXCTL_CURRENT_OVERLAY_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/current-instance
+BOXCTL_FALLBACK_OVERLAY_FILE=$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/fallback-instance
 
 # If this store does not exist, create it with empty entries
 if [ ! -d "$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/" ]; then
     mkdir "$BOXCTL_STORE/$BOXCTL_BOX_HOSTNAME/"
-    touch "$BOXCTL_CURRENT_FILE"
-    touch "$BOXCTL_FALLBACK_FILE"
+    touch "$BOXCTL_CURRENT_OVERLAY_FILE"
+    touch "$BOXCTL_FALLBACK_OVERLAY_FILE"
 fi
 
-[ -f $BOXCTL_CURRENT_FILE ] && BOXCTL_CURRENT_BOX=$(cat $BOXCTL_CURRENT_FILE)
-[ -f $BOXCTL_FALLBACK_FILE ] && BOXCTL_FALLBACK_BOX=$(cat $BOXCTL_FALLBACK_FILE)
+[ -f $BOXCTL_CURRENT_OVERLAY_FILE ] && BOXCTL_CURRENT_OVERLAY=$(cat $BOXCTL_CURRENT_OVERLAY_FILE)
+[ -f $BOXCTL_FALLBACK_OVERLAY_FILE ] && BOXCTL_FALLBACK_OVERLAY=$(cat $BOXCTL_FALLBACK_OVERLAY_FILE)
 
 # Process the subcommand
 case "$subcommand" in
@@ -182,7 +182,7 @@ configure)
 ;;
 start)
     checkForInstanceName
-    /usr/bin/tar-overlay mount $BOXCTL_CURRENT_BOX
+    /usr/bin/tar-overlay mount $BOXCTL_CURRENT_OVERLAY
     /usr/bin/systemctl start box@$BOXCTL_BOX_HOSTNAME
     exit $?
 ;;
@@ -254,16 +254,16 @@ list)
     exit $?
 ;;
 list-images)
-    if [[ -z "$BOXCTL_CURRENT_BOX" ]] ; then
-        BOXCTL_CURRENT_BOX="None"
+    if [[ -z "$BOXCTL_CURRENT_OVERLAY" ]] ; then
+        BOXCTL_CURRENT_OVERLAY="None"
     fi
 
-    if [[ -z "$BOXCTL_FALLBACK_BOX" ]] ; then
-        BOXCTL_FALLBACK_BOX="None"
+    if [[ -z "$BOXCTL_FALLBACK_OVERLAY" ]] ; then
+        BOXCTL_FALLBACK_OVERLAY="None"
     fi
 
-    echo -e "${BOLD}Current Container Image   :${NORMAL} $BOXCTL_CURRENT_BOX"
-    echo -e "${BOLD}Fallback Container Image  :${NORMAL} $BOXCTL_FALLBACK_BOX"
+    echo -e "${BOLD}Current Container Image   :${NORMAL} $BOXCTL_CURRENT_OVERLAY"
+    echo -e "${BOLD}Fallback Container Image  :${NORMAL} $BOXCTL_FALLBACK_OVERLAY"
     #echo -e "${BOLD}Available Container Images:${NORMAL}"
     tar-overlay list-images
 
@@ -296,22 +296,22 @@ cutover-instance)
 
     #echo "$TAROVERLAY_NAME" "$IMG_NAME"
     tar-overlay create "$TAROVERLAY_NAME" "$IMG_NAME"
-    switchToImage $TAROVERLAY_NAME $BOXCTL_FALLBACK_BOX
+    switchToImage $TAROVERLAY_NAME $BOXCTL_FALLBACK_OVERLAY
 
-    echo $BOXCTL_CURRENT_BOX > $BOXCTL_FALLBACK_FILE
-    echo $TAROVERLAY_NAME > $BOXCTL_CURRENT_FILE
+    echo $BOXCTL_CURRENT_OVERLAY > $BOXCTL_FALLBACK_OVERLAY_FILE
+    echo $TAROVERLAY_NAME > $BOXCTL_CURRENT_OVERLAY_FILE
 ;;
 fallback-instance)
     checkForInstanceName
-    if [[ -z "$BOXCTL_FALLBACK_BOX" ]]; then
+    if [[ -z "$BOXCTL_FALLBACK_OVERLAY" ]]; then
         echo "${RED}${BOLD}There is no fallback image.${NORMAL}"
         exit 1
     fi
 
-    switchToImage $BOXCTL_FALLBACK_BOX
+    switchToImage $BOXCTL_FALLBACK_OVERLAY
 
-    truncate -s0 $BOXCTL_FALLBACK_FILE
-    echo $BOXCTL_FALLBACK_BOX > $BOXCTL_CURRENT_FILE
+    truncate -s0 $BOXCTL_FALLBACK_OVERLAY_FILE
+    echo $BOXCTL_FALLBACK_OVERLAY > $BOXCTL_CURRENT_OVERLAY_FILE
 
 ;;
 delete-instance)
