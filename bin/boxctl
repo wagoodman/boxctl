@@ -125,6 +125,7 @@ switchToImage () {
         unlink "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME"
     fi
 
+    #echo "TEST" "$IMG_PATH" "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME" "END TEST"
     ln -s "$IMG_PATH" "$NSPAWN_IMAGES_DIR/$BOXCTL_BOX_HOSTNAME"
 
     echo "   Mounting new Box FS"
@@ -302,6 +303,7 @@ cutover-instance)
     IMG_NAME="$2"
     TAROVERLAY_NAME="${IMG_NAME}@${BOXCTL_BOX_HOSTNAME}"
 
+    #echo "$TAROVERLAY_NAME" "$IMG_NAME"
     tar-overlay create "$TAROVERLAY_NAME" "$IMG_NAME"
     switchToImage $TAROVERLAY_NAME $BOXCTL_FALLBACK_BOX
 
@@ -344,6 +346,7 @@ delete-instance)
     #/usr/bin/machinectl remove "$IMG_NAME"
 
     echo "${BOLD}Complete!${NORMAL}"
+;;
 reset-instance)
     if [[ -z "$2" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
