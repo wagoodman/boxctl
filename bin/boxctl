@@ -36,7 +36,7 @@ trap "echo '${RED}Canceling operation and exiting.${NORMAL}'; exit" SIGHUP SIGIN
 
 usage () {
 cat << EndOfHelp
-${BOLD}boxctl - wrapper for systemd-nspawn OS container control.${NORMAL}
+${BOLD}boxctl - wrapper for systemd-nspawn OS container management${NORMAL}
 
     boxctl <command> <instance-name> [<image-name>]
 
