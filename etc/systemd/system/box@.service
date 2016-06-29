@@ -1,5 +1,5 @@
 [Unit]
-Description=nspawn OS Container managed by boxctl
+Description=nspawn system container managed by boxctl
 PartOf=machines.target
 Before=machines.target
 
