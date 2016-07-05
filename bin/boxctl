@@ -56,7 +56,7 @@ ${BOLD}Container commands:${NORMAL}
     terminate <name>   Forcefully kill the system container (not recommended).
 
 ${BOLD}Container image/instance commands:${NORMAL}
-    cutover-instance <name> <image-name> [<path-to-service-config>]  Actively cutover to a new container instance.
+    cutover-instance <name> <image-name>   Actively cutover to a new container instance.
     delete-instance <name> <image-name>    Delete the instance based off of the given image name.
     fallback-instance <name>               Fallback to a previously used instance.
     list-images                     Show avaliable images, current instance, and fallback instance.
