@@ -272,13 +272,13 @@ list-images)
     exit $?
 ;;
 stage-image)
-    if [[ -z "$3" ]]; then
+    if [[ -z "$2" ]]; then
         echo "${RED}Please specify a path to the container tar.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
         echo "   $0 stage-image <path-to-tar>"
         exit 1
     fi
-    IMG_TAR_PATH="$3"
+    IMG_TAR_PATH="$2"
 
     tar-overlay install-image "$IMG_TAR_PATH"
     exit $?
