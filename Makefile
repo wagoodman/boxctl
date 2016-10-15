@@ -1,4 +1,4 @@
-BOXCTL_VERSION  =  0.1
+BOXCTL_VERSION  =  0.3
 # $(shell date +%Y%m%d)
 BOXCTL_BUILDID  = 0
 # $(shell date +%H%M%S)
