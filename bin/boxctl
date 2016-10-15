@@ -289,7 +289,7 @@ cutover-instance)
     if [[ -z "$3" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
-        echo "   $0 cutover-instance <name> <image-name>"
+        echo "   $0 cutover-instance <image-name>"
         exit 1
     fi
 
@@ -345,7 +345,7 @@ delete-instance)
 ;;
 reset-instance)
     checkForInstanceName
-    if [[ -z "$2" ]]; then
+    if [[ -z "$3" ]]; then
         echo "${RED}Please specify an existing image name.${NORMAL}"
         echo "${BOLD}Usage:${NORMAL}"
         echo "   $0 reset-instance <instance-name>"
@@ -357,7 +357,7 @@ reset-instance)
         exit 1
     fi
 
-    IMG_NAME="$2"
+    IMG_NAME="$3"
     TAROVERLAY_NAME="${IMG_NAME}@${BOXCTL_BOX_HOSTNAME}"
 
     tar-overlay umount "$TAROVERLAY_NAME"

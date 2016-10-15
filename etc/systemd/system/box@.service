@@ -5,10 +5,10 @@ Before=machines.target
 
 [Service]
 #ExecStartPre=/usr/bin/tar-overlay mount-all
-#ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --boot --link-journal=try-guest --machine %I -D /var/lib/machines/%I/ \
-ExecStart=/usr/bin/systemd-nspawn --keep-unit --boot --machine %I -D /var/lib/machines/%I/ \
---capability=CAP_NET_RAW --capability=CAP_NET_BROADCAST  --capability=CAP_NET_ADMIN \
--n
+EnvironmentFile=/opt/boxctl/config/%I.boxconf
+# --link-journal=try-guest
+ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --boot  --machine %I -D /var/lib/machines/%I/ \
+--capability=CAP_NET_RAW --capability=CAP_NET_BROADCAST --capability=CAP_NET_ADMIN $BOXOPTS
 
 KillMode=mixed
 Type=notify

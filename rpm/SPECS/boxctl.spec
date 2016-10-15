@@ -19,6 +19,7 @@ Wrapper for machinectl and systemctl to manage systemd-nspawn OS containers with
 # dirs
 %define _prod_dir       /opt/boxctl
 %define _bin_dir        /opt/boxctl/bin
+%define _config_dir     /opt/boxctl/config
 %define _store_dir      /opt/boxctl/store
 %define _image_dir      /opt/boxctl/store/images
 %define _instances_dir  /opt/boxctl/store/instances
@@ -35,6 +36,7 @@ mkdir -p $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{_prod_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_bin_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_store_dir}
+mkdir -p $RPM_BUILD_ROOT/%{_config_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_image_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_instances_dir}
 mkdir -p $RPM_BUILD_ROOT/%{_etc_systemd_dir}
